@@ -223,6 +223,12 @@
     <string name="diag_lines_newest_last">%1$d lines, newest last</string>
     <string name="diag_section_tools">Tools</string>
     <string name="diag_section_paths">Paths</string>
+    <string name="diag_section_process">Process</string>
+    <string name="diag_exit_note">Exit history describes this app process. The engine child is covered by the state above.</string>
+    <string name="diag_exit_unavailable">Exit history is not available on Android 10.</string>
+    <string name="diag_no_exit">No previous exit recorded.</string>
+    <string name="diag_copy_report">Copy report</string>
+    <string name="diag_copied">Report copied</string>
     <string name="diag_section_output">Engine output (this process)</string>
     <string name="diag_section_log">Engine log (on disk)</string>
 

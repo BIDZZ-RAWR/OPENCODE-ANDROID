@@ -79,6 +79,10 @@ class OpenCodeApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // A released install cannot be shelled into (`run-as` refuses), so a crash
+        // stacktrace would vanish with the process. Leave it on disk instead.
+        CrashLog.install(File(filesDir, "crash"))
+
         val nativeLibraryDir = File(applicationInfo.nativeLibraryDir)
         workspaceStore = WorkspaceStore(this)
         engineApi = dev.bidzz.opencode.api.EngineApi { workspaceStore.resolve().absolutePath }

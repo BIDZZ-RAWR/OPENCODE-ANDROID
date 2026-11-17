@@ -1,5 +1,7 @@
 package dev.bidzz.opencode.ui.diagnostics
 
+import android.os.Build
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
@@ -22,9 +24,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import dev.bidzz.opencode.BugReportData
+import dev.bidzz.opencode.ExitRun
 import dev.bidzz.opencode.OpenCodeApplication
 import dev.bidzz.opencode.R
+import dev.bidzz.opencode.ProcessHealth
+import dev.bidzz.opencode.buildBugReport
 import dev.bidzz.opencode.core.design.OpenCodeTheme
 import dev.bidzz.opencode.core.design.OpenCodeTypography
 import dev.bidzz.opencode.core.engine.EngineDiagnostics
@@ -62,12 +71,26 @@ fun DiagnosticsScreen(
     var logLines by remember { mutableStateOf<List<String>>(emptyList()) }
     var running by remember { mutableStateOf(false) }
     var showPassword by remember { mutableStateOf(false) }
+    var memoryClass by remember { mutableStateOf(0) }
+    var peakRss by remember { mutableStateOf<Long?>(null) }
+    var exitRuns by remember { mutableStateOf<List<ExitRun>>(emptyList()) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val appVersion = remember {
+        runCatching { app.packageManager.getPackageInfo(app.packageName, 0).versionName }.getOrNull() ?: "?"
+    }
+    val deviceInfo = remember {
+        "${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
+    }
 
     val refresh: () -> Unit = {
         if (!running) {
             running = true
             tools = diagnostics.tools()
+            memoryClass = ProcessHealth.memoryClassMB(context)
+            peakRss = ProcessHealth.peakRssKb()
+            exitRuns = ProcessHealth.exitRuns(context)
             scope.launch {
                 logLines = diagnostics.engineLogTail()
                 probes = listOf(
@@ -80,6 +103,39 @@ fun DiagnosticsScreen(
     }
     LaunchedEffect(Unit) { refresh() }
 
+    /** Assembles what this screen shows into one text; no password is ever handed to it. */
+    val copyReport: () -> Unit = {
+        val report = buildBugReport(
+            BugReportData(
+                version = appVersion,
+                device = deviceInfo,
+                engineState = status.state.name,
+                enginePid = status.pid,
+                enginePort = status.port,
+                engineBaseUrl = status.credentials?.baseUrl,
+                engineError = status.lastError,
+                workspace = app.workspaceStore.resolve().absolutePath,
+                paths = diagnostics.paths(),
+                tools = tools.map { tool ->
+                    "${tool.name}: ${if (tool.resolves) "linked" else "MISSING"} -> ${tool.target}"
+                },
+                probes = probes.map { probe ->
+                    "${probe.command.substringAfterLast('/')} -> exit ${probe.exitCode ?: "—"}" +
+                        "${if (probe.timedOut) " (timed out)" else ""}: " +
+                        probe.output.trim().lineSequence().first().take(200)
+                },
+                process = buildList {
+                    add("memoryClass: $memoryClass MB")
+                    peakRss?.let { add("peakRss: $it kB") }
+                    exitRuns.forEachIndexed { index, run -> add(ProcessHealth.formatExit(run, index)) }
+                },
+                engineLog = logLines,
+            ),
+        )
+        clipboard.setText(AnnotatedString(report))
+        Toast.makeText(context, R.string.diag_copied, Toast.LENGTH_SHORT).show()
+    }
+
     ScreenScaffold(
         title = stringResource(R.string.settings_diag_title),
         onBack = onBack,
@@ -89,6 +145,7 @@ fun DiagnosticsScreen(
                 refresh,
                 enabled = !running,
             )
+            TextAction(stringResource(R.string.diag_copy_report), { copyReport() })
         },
     ) {
         SelectionContainer {
@@ -185,6 +242,18 @@ fun DiagnosticsScreen(
                         ""
                     }
                     Line(label, value + suffix)
+                }
+
+                Section(stringResource(R.string.diag_section_process))
+                Line("memoryClass", "$memoryClass MB")
+                peakRss?.let { Line("peakRss", "$it kB") }
+                Body(stringResource(R.string.diag_exit_note), colors.onSurfaceFaint)
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                    Body(stringResource(R.string.diag_exit_unavailable), colors.onSurfaceFaint)
+                } else if (exitRuns.isEmpty()) {
+                    Body(stringResource(R.string.diag_no_exit), colors.onSurfaceFaint)
+                } else {
+                    exitRuns.forEachIndexed { index, run -> Mono(ProcessHealth.formatExit(run, index)) }
                 }
 
                 Section(stringResource(R.string.diag_section_output))

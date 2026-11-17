@@ -222,6 +222,12 @@
     <string name="diag_lines_newest_last">%1$d baris, terbaru di akhir</string>
     <string name="diag_section_tools">Alat</string>
     <string name="diag_section_paths">Path</string>
+    <string name="diag_section_process">Proses</string>
+    <string name="diag_exit_note">Riwayat keluar ini milik proses aplikasi. Proses engine diliput oleh state di atas.</string>
+    <string name="diag_exit_unavailable">Riwayat keluar tidak tersedia di Android 10.</string>
+    <string name="diag_no_exit">Belum ada riwayat keluar.</string>
+    <string name="diag_copy_report">Salin laporan</string>
+    <string name="diag_copied">Laporan disalin</string>
     <string name="diag_section_output">Keluaran engine (proses ini)</string>
     <string name="diag_section_log">Log engine (di disk)</string>
 
