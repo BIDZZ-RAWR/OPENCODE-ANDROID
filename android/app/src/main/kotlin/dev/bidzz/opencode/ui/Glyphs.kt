@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 enum class Glyph {
     Menu, NewChat, ArrowUp, ArrowDown, ArrowLeft, ChevronDown, ChevronRight,
     File, Folder, Pencil, Terminal, Search, Globe, Sliders,
-    Send, Camera, Code, Mail, External, Info,
+    Send, Camera, Code, Mail, External, Info, More, Mic, Plug, Check, Close, Copy, Share,
 }
 
 @Composable
@@ -127,6 +127,43 @@ fun GlyphIcon(glyph: Glyph, tint: Color, modifier: Modifier = Modifier, size: Dp
             Glyph.External -> {
                 line(8f, 16f, 17f, 7f)
                 shape(9f to 7f, 17f to 7f, 17f to 15f)
+            }
+            Glyph.Check -> shape(5f to 12.5f, 10f to 17f, 19f to 7f)
+            Glyph.Close -> {
+                line(6f, 6f, 18f, 18f)
+                line(18f, 6f, 6f, 18f)
+            }
+            Glyph.Copy -> {
+                drawRoundRect(
+                    tint, Offset(9f * u, 9f * u), Size(11f * u, 11f * u),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.5f * u), style = stroke,
+                )
+                shape(15f to 5f, 5f to 5f, 5f to 15f, 8f to 15f)
+            }
+            Glyph.Share -> {
+                shape(5f to 12f, 5f to 20f, 19f to 20f, 19f to 12f)
+                line(12f, 15f, 12f, 4f)
+                shape(8f to 8f, 12f to 4f, 16f to 8f)
+            }
+            Glyph.More -> {
+                drawCircle(tint, radius = 1.6f * u, center = Offset(12f * u, 5.5f * u))
+                drawCircle(tint, radius = 1.6f * u, center = Offset(12f * u, 12f * u))
+                drawCircle(tint, radius = 1.6f * u, center = Offset(12f * u, 18.5f * u))
+            }
+            Glyph.Mic -> {
+                drawRoundRect(
+                    tint, Offset(9f * u, 3f * u), Size(6f * u, 11f * u),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(3f * u), style = stroke,
+                )
+                shape(5.5f to 11f, 6.5f to 14.5f, 9.5f to 17f, 12f to 17.5f, 14.5f to 17f, 17.5f to 14.5f, 18.5f to 11f)
+                line(12f, 17.5f, 12f, 21f)
+            }
+            // A two-pin plug: an MCP server.
+            Glyph.Plug -> {
+                line(9f, 3f, 9f, 8f)
+                line(15f, 3f, 15f, 8f)
+                shape(6f to 8f, 18f to 8f, 18f to 12f, 12f to 17f, 6f to 12f, close = true)
+                line(12f, 17f, 12f, 21f)
             }
             Glyph.Info -> {
                 drawCircle(tint, radius = 9f * u, center = Offset(12f * u, 12f * u), style = stroke)
