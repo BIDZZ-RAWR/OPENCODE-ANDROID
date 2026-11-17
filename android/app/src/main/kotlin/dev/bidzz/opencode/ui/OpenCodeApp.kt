@@ -1,9 +1,19 @@
 package dev.bidzz.opencode.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import dev.bidzz.opencode.LanguageStore
@@ -182,7 +192,21 @@ fun OpenCodeApp(app: OpenCodeApplication) {
         ).toTypedArray(),
     ) {
     OpenCodeTheme {
-        when (screen) {
+        Box(Modifier.fillMaxSize()) {
+        AnimatedContent(
+            targetState = screen,
+            transitionSpec = {
+                val back = targetState == initialState.parent()
+                if (animationsOff(hostContext)) {
+                    fadeIn(tween(1)) togetherWith fadeOut(tween(1))
+                } else {
+                    (fadeIn(tween(200)) + slideInHorizontally(tween(220)) { if (back) -it / 4 else it / 4 }) togetherWith
+                        (fadeOut(tween(140)) + slideOutHorizontally(tween(180)) { if (back) it / 4 else -it / 4 })
+                }
+            },
+            label = "screen",
+        ) { target ->
+        when (target) {
             Screen.Chat -> ChatScreen(
                 state = chatState,
                 sessions = sessionsState.rows,
@@ -321,6 +345,9 @@ fun OpenCodeApp(app: OpenCodeApplication) {
                 app = app,
                 onBack = { screen = Screen.Chat },
             )
+        }
+        }
+        IntroHost()
         }
     }
     }

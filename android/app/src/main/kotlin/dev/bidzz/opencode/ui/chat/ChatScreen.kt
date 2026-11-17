@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -573,6 +574,23 @@ private fun EmptyChat(engineReady: Boolean, modifier: Modifier = Modifier) {
             style = OpenCodeTypography.label.copy(fontSize = 13.sp, letterSpacing = 6.sp),
             color = colors.accent,
             modifier = Modifier.padding(top = spacing.xs),
+        )
+        // A fresh greeting on every visit to the empty state, in the app's language.
+        val context = LocalContext.current
+        val greeting = remember { Greetings.from(context) }
+        Text(
+            text = greeting.first,
+            style = OpenCodeTypography.body,
+            color = colors.onSurface,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = spacing.xl),
+        )
+        Text(
+            text = greeting.second,
+            style = OpenCodeTypography.bodySmall,
+            color = colors.onSurfaceMuted,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = spacing.xxs),
         )
         Text(
             text = stringResource(if (engineReady) R.string.empty_title_ready else R.string.empty_title_starting),

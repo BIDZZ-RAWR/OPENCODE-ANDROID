@@ -287,6 +287,13 @@
     <string name="mcp_status_needs_auth">Perlu masuk</string>
 
     <!-- Reply actions -->
+    <string name="settings_section_interface">Tampilan</string>
+    <string name="settings_intro_title">Animasi pembuka</string>
+    <string name="settings_on">Nyala</string>
+    <string name="settings_off">Mati</string>
+    <string name="settings_intro_replay">Putar ulang pembuka</string>
+    <string name="settings_intro_replay_body">Memutar animasi pembuka sekali, di atas layar yang sedang terbuka.</string>
+
     <string name="chat_copy">Salin balasan</string>
     <string name="chat_share">Bagikan balasan</string>
     <string name="chat_disclaimer">OpenCode bisa membuat kesalahan. Periksa perubahan yang penting.</string>

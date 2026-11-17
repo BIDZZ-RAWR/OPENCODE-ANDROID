@@ -288,6 +288,13 @@
     <string name="mcp_status_needs_auth">Needs sign-in</string>
 
     <!-- Reply actions -->
+    <string name="settings_section_interface">Interface</string>
+    <string name="settings_intro_title">Opening animation</string>
+    <string name="settings_on">On</string>
+    <string name="settings_off">Off</string>
+    <string name="settings_intro_replay">Replay the opening</string>
+    <string name="settings_intro_replay_body">Plays the opening animation once, on top of the current screen.</string>
+
     <string name="chat_copy">Copy reply</string>
     <string name="chat_share">Share reply</string>
     <string name="chat_disclaimer">OpenCode can make mistakes. Check important changes.</string>

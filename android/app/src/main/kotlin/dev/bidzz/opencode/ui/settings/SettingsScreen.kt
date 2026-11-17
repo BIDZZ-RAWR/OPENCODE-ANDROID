@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,6 +45,7 @@ import dev.bidzz.opencode.ui.CardGroup
 import dev.bidzz.opencode.ui.Glyph
 import dev.bidzz.opencode.ui.GlyphIcon
 import dev.bidzz.opencode.ui.IconBadge
+import dev.bidzz.opencode.ui.Intro
 import dev.bidzz.opencode.ui.LocalizedAlertDialog
 import dev.bidzz.opencode.ui.RowDivider
 import dev.bidzz.opencode.ui.ScreenScaffold
@@ -74,6 +76,8 @@ fun SettingsScreen(
     val status by app.engineStatus.collectAsState()
     var pickingLanguage by remember { mutableStateOf(false) }
     val hasAllFiles = app.workspaceStore.hasAllFilesAccess()
+    val context = LocalContext.current
+    var introOn by remember { mutableStateOf(Intro.enabled(context)) }
 
     ScreenScaffold(title = stringResource(R.string.settings_title), onBack = onBack) {
         Column(
@@ -139,6 +143,25 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_diag_title),
                     subtitle = stringResource(R.string.settings_diag_body, engineStateWord(status.state)),
                     onClick = onDiagnostics,
+                )
+            }
+
+            Section(R.string.settings_section_interface) {
+                SettingsRow(
+                    glyph = Glyph.NewChat,
+                    title = stringResource(R.string.settings_intro_title),
+                    value = stringResource(if (introOn) R.string.settings_on else R.string.settings_off),
+                    onClick = {
+                        Intro.setEnabled(context, !introOn)
+                        introOn = !introOn
+                    },
+                )
+                SettingsRow(
+                    glyph = Glyph.External,
+                    title = stringResource(R.string.settings_intro_replay),
+                    subtitle = stringResource(R.string.settings_intro_replay_body),
+                    onClick = { Intro.replay.intValue++ },
+                    divider = true,
                 )
             }
 
