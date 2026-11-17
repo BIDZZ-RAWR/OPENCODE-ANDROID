@@ -274,6 +274,10 @@ fun ChatScreen(
                 enabled = state.workspaceReady,
                 modifier = Modifier.navigationBarsPadding(),
                 controls = {
+                    // The newest completed turn decides how full the context window is,
+                    // and its own model provides the limit; the ring rides on the chip.
+                    val lastTurn = state.messages.lastOrNull { it.tokens != null }
+                    val contextUsed = lastTurn?.tokens?.contextTokens()?.takeIf { it > 0 }
                     ChatControls(
                         agents = state.agents,
                         activeAgent = state.activeAgent,
@@ -281,6 +285,8 @@ fun ChatScreen(
                         activeModel = state.activeModel,
                         onAgent = onAgent,
                         onModel = onModel,
+                        contextUsed = contextUsed,
+                        contextModel = lastTurn?.model,
                     )
                 },
             )

@@ -302,6 +302,7 @@
 <string name="settings_outfit_party">Pesta</string>
 <string name="settings_outfit_witch">Penyihir</string>
 <string name="settings_outfit_shades">Kacamata</string>
+<string name="ring_context_a11y">Konteks terpakai: %s</string>
 
     <string name="chat_copy">Salin balasan</string>
     <string name="chat_share">Bagikan balasan</string>

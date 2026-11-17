@@ -54,6 +54,8 @@ data class ChatMessage(
      * catalog that arrives late still produces human names. See [provenanceLabel]. */
     val agent: String? = null,
     val model: dev.bidzz.opencode.core.api.dto.ModelRef? = null,
+    /** What the turn cost the context window; only assistant messages carry it. */
+    val tokens: dev.bidzz.opencode.core.api.dto.TokenUsage? = null,
 )
 
 /**
@@ -361,6 +363,9 @@ class ChatViewModel(
 
     /** Loads an existing session. */
     fun openSession(session: SessionInfo) {
+        // The session remembers the model it last spoke with; the chip and its
+        // usage ring need it before the operator picks a different one.
+        session.model?.let { _state.value = _state.value.copy(activeModel = it) }
         openSession(session.id)
     }
 
@@ -368,6 +373,14 @@ class ChatViewModel(
     fun openSession(sessionID: String) {
         val repo = repository ?: return
         repo.open(sessionID)
+        viewModelScope.launch {
+            when (val info = handle?.sessions?.get(sessionID)) {
+                is ApiResult.Success -> info.value.model
+                    ?.takeIf { _state.value.activeModel == null }
+                    ?.let { _state.value = _state.value.copy(activeModel = it) }
+                else -> Unit
+            }
+        }
     }
 
     /**
@@ -431,6 +444,7 @@ private fun ChatState.toUiMessages(): List<ChatMessage> {
                 tools = message.content.mapNotNull { it.toToolCall() },
                 agent = message.agent,
                 model = message.model,
+                tokens = message.tokens,
             )
             // `idle` markers are engine bookkeeping, not conversation.
         }

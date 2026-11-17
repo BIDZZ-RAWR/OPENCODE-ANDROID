@@ -49,11 +49,18 @@ fun ChatControls(
     activeModel: ModelRef?,
     onAgent: (String) -> Unit,
     onModel: (ModelRef) -> Unit,
+    contextUsed: Long? = null,
+    contextModel: ModelRef? = null,
     modifier: Modifier = Modifier,
 ) {
     if (agents.isEmpty() && models.isEmpty()) return
 
     val spacing = OpenCodeTheme.tokens.spacing
+    // The ring pairs the last completed turn's tokens with that turn's model: the
+    // window belongs to the model that filled it, and the session endpoint carries
+    // no model of its own.
+    val contextLimit = models.firstOrNull { it.ref() == contextModel }?.limit?.context
+    val fraction = fillFraction(contextUsed, contextLimit)
 
     // Plain text with a chevron, in the composer's second line.
     Row(
@@ -76,6 +83,17 @@ fun ChatControls(
                 items = models.map { it.ref().id to it.label() },
                 selected = activeModel?.id,
                 onSelect = { id -> models.firstOrNull { it.ref().id == id }?.let { onModel(it.ref()) } },
+                leading = if (fraction != null && contextUsed != null && contextLimit != null) {
+                    {
+                        UsageRing(
+                            fraction = fraction,
+                            used = contextUsed,
+                            limit = contextLimit,
+                        )
+                    }
+                } else {
+                    null
+                },
             )
         }
     }
@@ -88,6 +106,7 @@ private fun ChoiceChip(
     items: List<Pair<String, String>>,
     selected: String?,
     onSelect: (String) -> Unit,
+    leading: (@Composable () -> Unit)? = null,
 ) {
     val colors = OpenCodeTheme.colors
     val radius = OpenCodeTheme.tokens.radius
@@ -105,6 +124,7 @@ private fun ChoiceChip(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(spacing.xs),
         ) {
+            if (leading != null) leading()
             Text(
                 text = if (chosen) label else placeholder,
                 style = OpenCodeTypography.bodySmall,

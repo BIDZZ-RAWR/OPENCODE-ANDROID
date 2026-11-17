@@ -303,6 +303,7 @@
 <string name="settings_outfit_party">Party</string>
 <string name="settings_outfit_witch">Witch</string>
 <string name="settings_outfit_shades">Shades</string>
+<string name="ring_context_a11y">Context used: %s</string>
 
     <string name="chat_copy">Copy reply</string>
     <string name="chat_share">Share reply</string>
