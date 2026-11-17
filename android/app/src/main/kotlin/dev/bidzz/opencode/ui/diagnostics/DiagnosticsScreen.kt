@@ -37,6 +37,8 @@ import dev.bidzz.opencode.buildBugReport
 import dev.bidzz.opencode.core.design.OpenCodeTheme
 import dev.bidzz.opencode.core.design.OpenCodeTypography
 import dev.bidzz.opencode.core.engine.EngineDiagnostics
+import dev.bidzz.opencode.ui.CardGroup
+import dev.bidzz.opencode.ui.RowDivider
 import dev.bidzz.opencode.ui.ScreenScaffold
 import dev.bidzz.opencode.ui.TextAction
 import kotlinx.coroutines.launch
@@ -155,77 +157,95 @@ fun DiagnosticsScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(spacing.lg),
             ) {
-                Line("state", status.state.name)
-                Line("pid", status.pid?.toString() ?: stringResource(R.string.diag_none))
-                Line("port", status.port?.toString() ?: stringResource(R.string.diag_none))
-                Line("baseUrl", status.credentials?.baseUrl ?: stringResource(R.string.diag_none))
-                Box(Modifier.clickable { showPassword = !showPassword }) {
-                    Line(
-                        "password",
-                        status.credentials?.password?.let {
-                            if (showPassword) it else stringResource(R.string.diag_password_hidden)
-                        } ?: stringResource(R.string.diag_none),
-                    )
+                CardGroup {
+                    Line("state", status.state.name)
+                    RowDivider(inset = spacing.md)
+                    Line("pid", status.pid?.toString() ?: stringResource(R.string.diag_none))
+                    RowDivider(inset = spacing.md)
+                    Line("port", status.port?.toString() ?: stringResource(R.string.diag_none))
+                    RowDivider(inset = spacing.md)
+                    Line("baseUrl", status.credentials?.baseUrl ?: stringResource(R.string.diag_none))
+                    RowDivider(inset = spacing.md)
+                    Box(Modifier.clickable { showPassword = !showPassword }) {
+                        Line(
+                            "password",
+                            status.credentials?.password?.let {
+                                if (showPassword) it else stringResource(R.string.diag_password_hidden)
+                            } ?: stringResource(R.string.diag_none),
+                        )
+                    }
+                    RowDivider(inset = spacing.md)
+                    Line("error", status.lastError ?: stringResource(R.string.diag_none))
+                    RowDivider(inset = spacing.md)
+                    Line("nativeLibraryDir", app.applicationInfo.nativeLibraryDir)
+                    RowDivider(inset = spacing.md)
+                    Line("filesDir", app.filesDir.absolutePath)
+                    RowDivider(inset = spacing.md)
+                    Line("workspace", app.workspaceStore.resolve().absolutePath)
+                    RowDivider(inset = spacing.md)
+                    Line("all-files", app.workspaceStore.hasAllFilesAccess().toString())
+                    app.startupFailure?.let {
+                        RowDivider(inset = spacing.md)
+                        Line("startupFailure", it)
+                    }
                 }
-                Line("error", status.lastError ?: stringResource(R.string.diag_none))
-                Line("nativeLibraryDir", app.applicationInfo.nativeLibraryDir)
-                Line("filesDir", app.filesDir.absolutePath)
-                Line("workspace", app.workspaceStore.resolve().absolutePath)
-                Line("all-files", app.workspaceStore.hasAllFilesAccess().toString())
-                app.startupFailure?.let { Line("startupFailure", it) }
 
                 Section(stringResource(R.string.diag_section_tools))
-                if (tools.isEmpty()) {
-                    Body(stringResource(R.string.diag_no_tools), colors.onSurfaceFaint)
-                } else {
-                    tools.forEach { tool ->
+                CardGroup {
+                    if (tools.isEmpty()) {
+                        Body(stringResource(R.string.diag_no_tools), colors.onSurfaceFaint)
+                    } else {
+                        tools.forEachIndexed { index, tool ->
+                            if (index > 0) RowDivider(inset = spacing.md)
+                            Line(
+                                tool.name,
+                                buildString {
+                                    append(
+                                        stringResource(
+                                            if (tool.resolves) R.string.diag_linked else R.string.diag_missing,
+                                        ),
+                                    )
+                                    append(" -> ")
+                                    append(tool.target)
+                                    if (!tool.sourcePresent) {
+                                        append("  ")
+                                        append(stringResource(R.string.diag_no_so))
+                                    }
+                                },
+                                ok = tool.resolves,
+                            )
+                        }
+                    }
+                    probes.forEachIndexed { index, probe ->
+                        RowDivider(inset = spacing.md)
                         Line(
-                            tool.name,
-                            buildString {
-                                append(
-                                    stringResource(
-                                        if (tool.resolves) R.string.diag_linked else R.string.diag_missing,
-                                    ),
+                            probe.command.substringAfterLast('/').substringBefore(' '),
+                            when {
+                                probe.timedOut -> stringResource(R.string.diag_timeout, PROBE_TIMEOUT_SECONDS)
+                                probe.exitCode == 0 ->
+                                    // --version prints a block; the first line is the version, and
+                                    // the rest only matters when something is missing.
+                                    probe.output.trim().lineSequence().first().let { head ->
+                                        val extra = probe.output.trim()
+                                            .lines()
+                                            .drop(1)
+                                            .firstOrNull { it.isNotBlank() }
+                                            ?.trim()
+                                        if (extra == null) head else "$head  ·  $extra"
+                                    }
+                                else -> stringResource(
+                                    R.string.diag_exit,
+                                    probe.exitCode ?: 0,
+                                    probe.output.trim().ifEmpty { stringResource(R.string.diag_no_output) }
+                                        .replace('\n', ' '),
                                 )
-                                append(" -> ")
-                                append(tool.target)
-                                if (!tool.sourcePresent) {
-                                    append("  ")
-                                    append(stringResource(R.string.diag_no_so))
-                                }
                             },
-                            ok = tool.resolves,
+                            ok = probe.ok,
                         )
                     }
                 }
                 if (probes.isEmpty() && !running) {
                     Body(stringResource(R.string.diag_tap_refresh), colors.onSurfaceFaint)
-                }
-                probes.forEach { probe ->
-                    Line(
-                        probe.command.substringAfterLast('/').substringBefore(' '),
-                        when {
-                            probe.timedOut -> stringResource(R.string.diag_timeout, PROBE_TIMEOUT_SECONDS)
-                            probe.exitCode == 0 ->
-                                // --version prints a block; the first line is the version, and
-                                // the rest only matters when something is missing.
-                                probe.output.trim().lineSequence().first().let { head ->
-                                    val extra = probe.output.trim()
-                                        .lines()
-                                        .drop(1)
-                                        .firstOrNull { it.isNotBlank() }
-                                        ?.trim()
-                                    if (extra == null) head else "$head  ·  $extra"
-                                }
-                            else -> stringResource(
-                                R.string.diag_exit,
-                                probe.exitCode ?: 0,
-                                probe.output.trim().ifEmpty { stringResource(R.string.diag_no_output) }
-                                    .replace('\n', ' '),
-                            )
-                        },
-                        ok = probe.ok,
-                    )
                 }
                 Body(
                     text = stringResource(R.string.diag_probe_note),
@@ -233,34 +253,48 @@ fun DiagnosticsScreen(
                 )
 
                 Section(stringResource(R.string.diag_section_paths))
-                diagnostics.paths().forEach { (label, value) ->
-                    // The engine reports a path, not whether the file is there; saying "(missing)"
-                    // is the screen's job, in the app's language.
-                    val suffix = if (label == "engineLog" && !diagnostics.engineLogFile.isFile) {
-                        " " + stringResource(R.string.diag_missing_suffix)
-                    } else {
-                        ""
+                CardGroup {
+                    diagnostics.paths().forEachIndexed { index, (label, value) ->
+                        // The engine reports a path, not whether the file is there; saying "(missing)"
+                        // is the screen's job, in the app's language.
+                        if (index > 0) RowDivider(inset = spacing.md)
+                        val suffix = if (label == "engineLog" && !diagnostics.engineLogFile.isFile) {
+                            " " + stringResource(R.string.diag_missing_suffix)
+                        } else {
+                            ""
+                        }
+                        Line(label, value + suffix)
                     }
-                    Line(label, value + suffix)
                 }
 
                 Section(stringResource(R.string.diag_section_process))
-                Line("memoryClass", "$memoryClass MB")
-                peakRss?.let { Line("peakRss", "$it kB") }
+                CardGroup {
+                    Line("memoryClass", "$memoryClass MB")
+                    peakRss?.let {
+                        RowDivider(inset = spacing.md)
+                        Line("peakRss", "$it kB")
+                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && exitRuns.isNotEmpty()) {
+                        exitRuns.forEachIndexed { index, run ->
+                            RowDivider(inset = spacing.md)
+                            Mono(ProcessHealth.formatExit(run, index))
+                        }
+                    }
+                }
                 Body(stringResource(R.string.diag_exit_note), colors.onSurfaceFaint)
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
                     Body(stringResource(R.string.diag_exit_unavailable), colors.onSurfaceFaint)
                 } else if (exitRuns.isEmpty()) {
                     Body(stringResource(R.string.diag_no_exit), colors.onSurfaceFaint)
-                } else {
-                    exitRuns.forEachIndexed { index, run -> Mono(ProcessHealth.formatExit(run, index)) }
                 }
 
                 Section(stringResource(R.string.diag_section_output))
                 if (status.recentOutput.isEmpty()) {
                     Body(stringResource(R.string.diag_no_output_yet), colors.onSurfaceMuted)
                 } else {
-                    status.recentOutput.takeLast(40).forEach { line -> Mono(line) }
+                    CardGroup {
+                        status.recentOutput.takeLast(40).forEach { line -> Mono(line) }
+                    }
                 }
 
                 Section(stringResource(R.string.diag_section_log))
@@ -268,7 +302,9 @@ fun DiagnosticsScreen(
                     Body(stringResource(R.string.diag_nothing_read), colors.onSurfaceMuted)
                 } else {
                     Body(stringResource(R.string.diag_lines_newest_last, logLines.size), colors.onSurfaceFaint)
-                    logLines.takeLast(120).forEach { line -> Mono(line) }
+                    CardGroup {
+                        logLines.takeLast(120).forEach { line -> Mono(line) }
+                    }
                 }
             }
         }
@@ -290,7 +326,12 @@ private fun Section(title: String) {
 
 @Composable
 private fun Body(text: String, color: Color) {
-    Text(text = text, style = OpenCodeTypography.bodySmall, color = color)
+    Text(
+        text = text,
+        style = OpenCodeTypography.bodySmall,
+        color = color,
+        modifier = Modifier.padding(horizontal = OpenCodeTheme.tokens.spacing.md),
+    )
 }
 
 @Composable
@@ -300,7 +341,9 @@ private fun Mono(text: String) {
         text = text,
         style = OpenCodeTypography.code,
         color = colors.onSurfaceMuted,
-        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        modifier = Modifier
+            .padding(horizontal = OpenCodeTheme.tokens.spacing.md)
+            .horizontalScroll(rememberScrollState()),
     )
 }
 
@@ -309,7 +352,7 @@ private fun Line(label: String, value: String, ok: Boolean? = null) {
     val colors = OpenCodeTheme.colors
     val spacing = OpenCodeTheme.tokens.spacing
 
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = spacing.xxs)) {
+    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.md, vertical = spacing.xxs)) {
         Text(
             text = label,
             style = OpenCodeTypography.bodySmall,

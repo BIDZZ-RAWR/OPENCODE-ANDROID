@@ -1,5 +1,6 @@
 package dev.bidzz.opencode.ui.sessions
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -221,7 +222,14 @@ private fun SessionRowItem(
                 ) {
                     GlyphIcon(Glyph.More, tint = colors.onSurfaceMuted, size = 20.dp)
                 }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenu(
+                    expanded = menuOpen,
+                    onDismissRequest = { menuOpen = false },
+                    // The stock menu surface is the one place that ignored the app's tokens.
+                    shape = RoundedCornerShape(OpenCodeTheme.tokens.radius.md),
+                    containerColor = OpenCodeTheme.colors.surfaceRaised,
+                    border = BorderStroke(0.5.dp, OpenCodeTheme.colors.outline),
+                ) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.history_rename), style = OpenCodeTypography.body, color = colors.onSurface) },
                         onClick = { menuOpen = false; renaming = true },

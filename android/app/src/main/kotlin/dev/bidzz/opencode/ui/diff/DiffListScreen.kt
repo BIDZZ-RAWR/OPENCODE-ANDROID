@@ -1,21 +1,18 @@
 package dev.bidzz.opencode.ui.diff
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -23,6 +20,8 @@ import dev.bidzz.opencode.R
 import dev.bidzz.opencode.core.api.dto.VcsFileStatus
 import dev.bidzz.opencode.core.design.OpenCodeTheme
 import dev.bidzz.opencode.core.design.OpenCodeTypography
+import dev.bidzz.opencode.ui.CardGroup
+import dev.bidzz.opencode.ui.RowDivider
 import dev.bidzz.opencode.ui.ScreenScaffold
 
 /**
@@ -53,13 +52,19 @@ fun DiffListScreen(
             }
         } else {
             val sorted = changed.values.sortedBy { it.file }
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = spacing.lg, vertical = spacing.sm),
-                verticalArrangement = Arrangement.spacedBy(spacing.xxs),
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = spacing.lg, vertical = spacing.sm),
             ) {
-                items(sorted, key = { it.file }) { entry ->
-                    ChangedFileRow(entry, onClick = { onOpen(entry.file) })
+                // One card with hairline dividers, like the Files list — the app's
+                // way of saying "these are rows of the same thing".
+                CardGroup {
+                    sorted.forEachIndexed { index, entry ->
+                        if (index > 0) RowDivider(inset = spacing.md)
+                        ChangedFileRow(entry, onClick = { onOpen(entry.file) })
+                    }
                 }
             }
         }
@@ -70,14 +75,12 @@ fun DiffListScreen(
 private fun ChangedFileRow(entry: VcsFileStatus, onClick: () -> Unit) {
     val colors = OpenCodeTheme.colors
     val spacing = OpenCodeTheme.tokens.spacing
-    val radius = OpenCodeTheme.tokens.radius
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(radius.sm))
             .clickable(onClick = onClick)
-            .padding(horizontal = spacing.sm, vertical = spacing.md),
+            .padding(start = spacing.md, end = spacing.xs, top = spacing.sm, bottom = spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(

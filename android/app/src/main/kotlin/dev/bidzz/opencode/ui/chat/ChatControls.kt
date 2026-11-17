@@ -1,5 +1,6 @@
 package dev.bidzz.opencode.ui.chat
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -115,7 +116,15 @@ private fun ChoiceChip(
             GlyphIcon(Glyph.ChevronDown, tint = colors.onSurfaceFaint, size = 14.dp)
         }
 
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            // Same token surface as the session menu: the stock menu is the one
+            // surface that still looked like stock Material.
+            shape = RoundedCornerShape(OpenCodeTheme.tokens.radius.md),
+            containerColor = OpenCodeTheme.colors.surfaceRaised,
+            border = BorderStroke(0.5.dp, OpenCodeTheme.colors.outline),
+        ) {
             items.forEach { (id, text) ->
                 DropdownMenuItem(
                     text = {
