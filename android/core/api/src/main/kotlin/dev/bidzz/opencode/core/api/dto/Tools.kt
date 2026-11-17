@@ -44,6 +44,10 @@ fun List<MessageContent>.toolOutput(): String? =
         .joinToString("\n")
         .ifEmpty { null }
 
+/** The shell command behind a bash tool call; null for anything else or a partial input. */
+fun ToolCall.inputCommand(): String? =
+    (input as? JsonObject)?.get("command")?.let { (it as? JsonPrimitive)?.contentOrNull }
+
 /** Converts a history `tool` block; null for any other block type. */
 fun MessageContent.toToolCall(): ToolCall? {
     if (type != "tool") return null

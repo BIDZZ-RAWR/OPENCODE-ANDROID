@@ -1,5 +1,20 @@
 package dev.bidzz.opencode.ui.chat
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -41,6 +56,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
@@ -171,6 +187,7 @@ fun ChatScreen(
                             // Computed here, not when the repository emitted, so the label
                             // upgrades to human names as soon as the catalog loads.
                             MessageBubble(
+                                modifier = Modifier.animateItem(),
                                 role = message.role,
                                 markdown = message.text,
                                 streaming = message.streaming,
@@ -187,15 +204,7 @@ fun ChatScreen(
                         // Until the first reply token arrives, the only sign of life is this line
                         // under the user's own bubble; once the reply streams it has its spinner.
                         if (state.busy && state.messages.lastOrNull()?.role == Role.USER) {
-                            item(key = "working") {
-                                Text(
-                                    text = stringResource(R.string.chat_working),
-                                    style = OpenCodeTypography.label,
-                                    color = colors.onSurfaceMuted,
-                                    textAlign = TextAlign.End,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
+                            item(key = "working") { WorkingLine() }
                         }
                         if (state.failure != null || state.failureKey != null) {
                             item(key = "error") {
@@ -208,30 +217,47 @@ fun ChatScreen(
                         }
                     }
                     // Following stops when the reader scrolls up, so give them the way back.
-                    if (!nearBottom) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = !nearBottom,
+                        enter = scaleIn(tween(140)) + fadeIn(tween(140)),
+                        exit = scaleOut(tween(120)) + fadeOut(tween(120)),
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = spacing.lg, bottom = spacing.md),
+                    ) {
                         JumpToLatest(
                             onClick = { scope.launch { listState.animateScrollToItem(state.messages.lastIndex) } },
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(end = spacing.lg, bottom = spacing.md),
                         )
                     }
                 }
             }
 
             state.pendingPermission?.let { request ->
-                PermissionPrompt(
-                    request = request,
-                    onReply = onPermissionReply,
-                    modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
-                )
+                val shown = remember { MutableTransitionState(false).apply { targetState = true } }
+                AnimatedVisibility(
+                    visibleState = shown,
+                    enter = expandVertically(tween(180)) + fadeIn(tween(180)),
+                    exit = shrinkVertically(tween(140)) + fadeOut(tween(140)),
+                ) {
+                    PermissionPrompt(
+                        request = request,
+                        onReply = onPermissionReply,
+                        modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
+                    )
+                }
             }
 
-            CommandSuggestions(
-                commands = state.commands,
-                draft = state.draft,
-                onPick = { name -> onDraftChange("/$name ") },
-            )
+            AnimatedVisibility(
+                visible = state.draft.startsWith("/") && state.commands.isNotEmpty(),
+                enter = expandVertically(tween(160)) + fadeIn(tween(160)),
+                exit = shrinkVertically(tween(140)) + fadeOut(tween(140)),
+            ) {
+                CommandSuggestions(
+                    commands = state.commands,
+                    draft = state.draft,
+                    onPick = { name -> onDraftChange("/$name ") },
+                )
+            }
 
             // Only on a blank page with nothing typed: once there is a draft or a chat, they are noise.
             if (state.messages.isEmpty() && state.workspaceReady && state.draft.isEmpty()) {
@@ -304,10 +330,11 @@ private fun ChatHeader(
                 .padding(horizontal = spacing.md, vertical = spacing.xs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val dotColor by animateColorAsState(colors.statusColor(status), tween(240), label = "dot")
             Box(
                 Modifier
                     .size(dims.statusDotSize)
-                    .background(colors.statusColor(status), CircleShape),
+                    .background(dotColor, CircleShape),
             )
             Text(
                 text = title,
@@ -514,6 +541,27 @@ private fun DrawerItem(label: String, glyph: Glyph, onClick: () -> Unit) {
 }
 
 private const val DRAWER_SESSIONS = 20
+
+/** "Working." with a calm pulse: the same words, alive while nothing else has arrived. */
+@Composable
+private fun WorkingLine() {
+    val colors = OpenCodeTheme.colors
+    val alpha by rememberInfiniteTransition(label = "working").animateFloat(
+        initialValue = 1f,
+        targetValue = 0.35f,
+        animationSpec = infiniteRepeatable(tween(700, easing = LinearEasing), RepeatMode.Reverse),
+        label = "pulse",
+    )
+    Text(
+        text = stringResource(R.string.chat_working),
+        style = OpenCodeTypography.label,
+        color = colors.onSurfaceMuted,
+        textAlign = TextAlign.End,
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer { this.alpha = alpha },
+    )
+}
 
 /** A small round button that returns to the newest message. */
 @Composable

@@ -7,6 +7,10 @@ import android.speech.RecognizerIntent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -68,6 +72,7 @@ fun Composer(
 
     Column(
         modifier = modifier
+            .animateContentSize(tween(160, easing = FastOutSlowInEasing))
             .fillMaxWidth()
             .padding(horizontal = spacing.md, vertical = spacing.sm)
             .background(colors.surfaceRaised, shape)
@@ -197,19 +202,21 @@ private fun ActionButton(busy: Boolean, canSend: Boolean, onClick: () -> Unit) {
         // Sending is the one primary action on this screen, so it carries the brand accent.
         fill = if (active) colors.accent else colors.surfaceVariant,
     ) {
-        if (busy) {
-            // A filled square reads as "stop" without needing an icon.
-            Box(
-                Modifier
-                    .size(12.dp)
-                    .background(colors.onAccent, RoundedCornerShape(2.dp)),
-            )
-        } else {
-            GlyphIcon(
-                glyph = Glyph.ArrowUp,
-                tint = if (canSend) colors.onAccent else colors.onSurfaceFaint,
-                size = 22.dp,
-            )
+        Crossfade(targetState = busy, animationSpec = tween(160), label = "action") { isBusy ->
+            if (isBusy) {
+                // A filled square reads as "stop" without needing an icon.
+                Box(
+                    Modifier
+                        .size(12.dp)
+                        .background(colors.onAccent, RoundedCornerShape(2.dp)),
+                )
+            } else {
+                GlyphIcon(
+                    glyph = Glyph.ArrowUp,
+                    tint = if (canSend) colors.onAccent else colors.onSurfaceFaint,
+                    size = 22.dp,
+                )
+            }
         }
     }
 }
