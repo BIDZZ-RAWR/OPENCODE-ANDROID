@@ -294,6 +294,15 @@
     <string name="settings_off">Off</string>
     <string name="settings_intro_replay">Replay the opening</string>
     <string name="settings_intro_replay_body">Plays the opening animation once, on top of the current screen.</string>
+<string name="settings_mascot_title">Mascot</string>
+<string name="settings_outfit_title">Cloud outfit</string>
+<string name="settings_outfit_body">What the pixel cloud wears; tap to cycle. Automatic follows the season.</string>
+<string name="settings_outfit_auto">Automatic</string>
+<string name="settings_outfit_off">None</string>
+<string name="settings_outfit_santa">Santa</string>
+<string name="settings_outfit_party">Party</string>
+<string name="settings_outfit_witch">Witch</string>
+<string name="settings_outfit_shades">Shades</string>
 
     <string name="chat_copy">Copy reply</string>
     <string name="chat_share">Share reply</string>

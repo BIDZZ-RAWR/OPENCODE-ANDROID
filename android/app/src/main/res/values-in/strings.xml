@@ -293,6 +293,15 @@
     <string name="settings_off">Mati</string>
     <string name="settings_intro_replay">Putar ulang pembuka</string>
     <string name="settings_intro_replay_body">Memutar animasi pembuka sekali, di atas layar yang sedang terbuka.</string>
+<string name="settings_mascot_title">Maskot</string>
+<string name="settings_outfit_title">Kostum awan</string>
+<string name="settings_outfit_body">Yang dipakai awan piksel; ketuk untuk ganti. Otomatis mengikuti musim.</string>
+<string name="settings_outfit_auto">Otomatis</string>
+<string name="settings_outfit_off">Mati</string>
+<string name="settings_outfit_santa">Santa</string>
+<string name="settings_outfit_party">Pesta</string>
+<string name="settings_outfit_witch">Penyihir</string>
+<string name="settings_outfit_shades">Kacamata</string>
 
     <string name="chat_copy">Salin balasan</string>
     <string name="chat_share">Bagikan balasan</string>

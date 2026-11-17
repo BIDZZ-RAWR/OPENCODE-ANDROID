@@ -46,6 +46,7 @@ import dev.bidzz.opencode.ui.Glyph
 import dev.bidzz.opencode.ui.GlyphIcon
 import dev.bidzz.opencode.ui.IconBadge
 import dev.bidzz.opencode.ui.Intro
+import dev.bidzz.opencode.ui.chat.Mascot
 import dev.bidzz.opencode.ui.LocalizedAlertDialog
 import dev.bidzz.opencode.ui.RowDivider
 import dev.bidzz.opencode.ui.ScreenScaffold
@@ -78,6 +79,8 @@ fun SettingsScreen(
     val hasAllFiles = app.workspaceStore.hasAllFilesAccess()
     val context = LocalContext.current
     var introOn by remember { mutableStateOf(Intro.enabled(context)) }
+    var mascotOn by remember { mutableStateOf(Mascot.enabled(context)) }
+    var outfit by remember { mutableStateOf(Mascot.outfit(context)) }
 
     ScreenScaffold(title = stringResource(R.string.settings_title), onBack = onBack) {
         Column(
@@ -162,6 +165,27 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_intro_replay_body),
                     onClick = { Intro.replay.intValue++ },
                     divider = true,
+                )
+                SettingsRow(
+                    glyph = Glyph.NewChat,
+                    title = stringResource(R.string.settings_mascot_title),
+                    value = stringResource(if (mascotOn) R.string.settings_on else R.string.settings_off),
+                    onClick = {
+                        Mascot.setEnabled(context, !mascotOn)
+                        mascotOn = !mascotOn
+                    },
+                    divider = true,
+                )
+                SettingsRow(
+                    glyph = Glyph.External,
+                    title = stringResource(R.string.settings_outfit_title),
+                    subtitle = stringResource(R.string.settings_outfit_body),
+                    value = stringResource(outfitLabel(outfit)),
+                    onClick = {
+                        val choices = Mascot.OUTFIT_CHOICES
+                        outfit = choices[(choices.indexOf(outfit) + 1).mod(choices.size)]
+                        Mascot.setOutfit(context, outfit)
+                    },
                 )
             }
 
@@ -344,3 +368,14 @@ private fun engineStateWord(state: EngineState): String = stringResource(
         EngineState.STOPPED -> R.string.engine_state_stopped
     },
 )
+
+/** Display name of a mascot outfit choice, localised. */
+private fun outfitLabel(outfit: String): Int = when (outfit) {
+    "auto" -> R.string.settings_outfit_auto
+    "off" -> R.string.settings_outfit_off
+    "santa" -> R.string.settings_outfit_santa
+    "party" -> R.string.settings_outfit_party
+    "witch" -> R.string.settings_outfit_witch
+    "shades" -> R.string.settings_outfit_shades
+    else -> R.string.settings_outfit_auto
+}

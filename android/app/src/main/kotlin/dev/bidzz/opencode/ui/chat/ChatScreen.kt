@@ -169,6 +169,7 @@ fun ChatScreen(
                 if (state.messages.isEmpty()) {
                     EmptyChat(
                         engineReady = state.workspaceReady,
+                        engineFailed = state.failure != null,
                         modifier = Modifier.align(Alignment.Center),
                     )
                 } else {
@@ -590,14 +591,17 @@ private fun JumpToLatest(onClick: () -> Unit, modifier: Modifier = Modifier) {
  * the middle of the screen stays quiet. While the engine starts, it says so.
  */
 @Composable
-private fun EmptyChat(engineReady: Boolean, modifier: Modifier = Modifier) {
+private fun EmptyChat(engineReady: Boolean, engineFailed: Boolean, modifier: Modifier = Modifier) {
     val colors = OpenCodeTheme.colors
     val spacing = OpenCodeTheme.tokens.spacing
     val dims = OpenCodeTheme.tokens.dimensions
+    val context = LocalContext.current
+    val mascotOn = remember { Mascot.enabled(context) }
 
     Column(
         // Full width, so the children centre on the screen rather than on their own widest line.
         modifier = modifier
+            .cloudBackdrop(mascotOn)
             .fillMaxWidth()
             .widthIn(max = dims.contentMaxWidth)
             .padding(horizontal = spacing.xl),
@@ -623,8 +627,17 @@ private fun EmptyChat(engineReady: Boolean, modifier: Modifier = Modifier) {
             color = colors.accent,
             modifier = Modifier.padding(top = spacing.xs),
         )
+        // The pixel cloud pet, below the wordmark: it bobs here, reacts to a tap or a
+        // stroke, and mirrors the engine while it warms up.
+        if (mascotOn) {
+            MascotCloud(
+                engineFailed = engineFailed,
+                busy = false,
+                stopped = !engineReady,
+                modifier = Modifier.padding(top = spacing.md),
+            )
+        }
         // A fresh greeting on every visit to the empty state, in the app's language.
-        val context = LocalContext.current
         val greeting = remember { Greetings.from(context) }
         Text(
             text = greeting.first,
