@@ -156,6 +156,11 @@
     <string name="history_all_projects">All projects</string>
     <string name="history_loading">Loading conversations…</string>
     <string name="history_empty">No conversations yet.\nSend a message to start one.</string>
+    <string name="history_more">More actions</string>
+    <string name="history_rename">Rename</string>
+    <string name="history_rename_title">Rename conversation</string>
+    <string name="history_delete_title">Delete this conversation?</string>
+    <string name="history_delete_body">It and its messages are removed from this device. This cannot be undone.</string>
 
     <!-- Providers -->
     <string name="providers_title">Providers</string>

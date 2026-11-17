@@ -37,6 +37,8 @@ data class SessionListUiState(
     val failureKey: Int? = null,
     /** Only sessions for this directory, when filtering. */
     val filterDirectory: String? = null,
+    /** The last rename or delete that failed; the list stays on screen beneath it. Cleared by the next load. */
+    val notice: ApiResult.Failure? = null,
 )
 
 /**
@@ -61,7 +63,9 @@ class SessionListViewModel(
             return
         }
         val directory = if (scopedToWorkspace) workspace() else null
-        _state.value = _state.value.copy(loading = true, failure = null, failureKey = null, filterDirectory = directory)
+        _state.value = _state.value.copy(
+            loading = true, failure = null, failureKey = null, notice = null, filterDirectory = directory,
+        )
 
         viewModelScope.launch {
             when (val result = handle.sessions.list(directory = directory, limit = 50)) {
@@ -75,6 +79,39 @@ class SessionListViewModel(
                 is ApiResult.Failure -> {
                     _state.value = _state.value.copy(loading = false, failure = result)
                 }
+            }
+        }
+    }
+
+    /** Renames on the engine, then in the list: no reload, so the scroll position stays. */
+    fun rename(row: SessionRow, title: String) {
+        val clean = title.trim()
+        if (clean.isEmpty() || clean == row.title) return
+        val handle = api.handle() ?: return
+        viewModelScope.launch {
+            when (val result = handle.sessions.rename(row.id, clean)) {
+                is ApiResult.Success -> _state.value = _state.value.copy(
+                    rows = _state.value.rows.map { if (it.id == row.id) it.copy(title = clean) else it },
+                    notice = null,
+                )
+                is ApiResult.Failure -> _state.value = _state.value.copy(notice = result)
+            }
+        }
+    }
+
+    /** Deletes on the engine, then drops the row. [onDeleted] lets the caller reset a chat showing it. */
+    fun delete(row: SessionRow, onDeleted: () -> Unit = {}) {
+        val handle = api.handle() ?: return
+        viewModelScope.launch {
+            when (val result = handle.sessions.delete(row.id)) {
+                is ApiResult.Success -> {
+                    _state.value = _state.value.copy(
+                        rows = _state.value.rows.filterNot { it.id == row.id },
+                        notice = null,
+                    )
+                    onDeleted()
+                }
+                is ApiResult.Failure -> _state.value = _state.value.copy(notice = result)
             }
         }
     }

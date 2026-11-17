@@ -1,7 +1,22 @@
 package dev.bidzz.opencode.ui.sessions
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import dev.bidzz.opencode.ui.LocalizedAlertDialog
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,8 +64,11 @@ fun SessionListScreen(
     onOpen: (SessionRow) -> Unit,
     onToggleScope: () -> Unit,
     onNewSession: () -> Unit,
+    onRename: (SessionRow, String) -> Unit,
+    onDelete: (SessionRow) -> Unit,
 ) {
     val spacing = OpenCodeTheme.tokens.spacing
+    val colors = OpenCodeTheme.colors
 
     ScreenScaffold(
         title = stringResource(R.string.history_title),
@@ -76,6 +94,16 @@ fun SessionListScreen(
             )
         }
 
+        // A rename or delete that failed: said once, above a list that is still usable.
+        state.notice?.let { failure ->
+            Text(
+                text = failure.message(),
+                style = OpenCodeTypography.bodySmall,
+                color = colors.danger,
+                modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs),
+            )
+        }
+
         when {
             state.loading -> CenteredMessage(stringResource(R.string.history_loading))
             state.failure != null -> CenteredMessage(state.failure.message(), isError = true)
@@ -97,6 +125,8 @@ fun SessionListScreen(
                         isFirst = index == 0,
                         isLast = index == state.rows.lastIndex,
                         onClick = { onOpen(row) },
+                        onRename = { title -> onRename(row, title) },
+                        onDelete = { onDelete(row) },
                     )
                 }
             }
@@ -122,10 +152,15 @@ private fun SessionRowItem(
     isFirst: Boolean,
     isLast: Boolean,
     onClick: () -> Unit,
+    onRename: (String) -> Unit,
+    onDelete: () -> Unit,
 ) {
     val colors = OpenCodeTheme.colors
     val spacing = OpenCodeTheme.tokens.spacing
     val r = OpenCodeTheme.tokens.radius.lg
+    var menuOpen by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf(false) }
+    var confirmingDelete by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(
         topStart = if (isFirst) r else 0.dp,
         topEnd = if (isFirst) r else 0.dp,
@@ -174,14 +209,93 @@ private fun SessionRowItem(
                     )
                 }
             }
-            GlyphIcon(
-                Glyph.ChevronRight,
-                tint = colors.onSurfaceFaint,
-                size = 18.dp,
-                modifier = Modifier.padding(start = spacing.sm),
-            )
+            Box {
+                val moreLabel = stringResource(R.string.history_more)
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .semantics { contentDescription = moreLabel }
+                        .clickable(role = Role.Button) { menuOpen = true },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    GlyphIcon(Glyph.More, tint = colors.onSurfaceMuted, size = 20.dp)
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.history_rename), style = OpenCodeTypography.body, color = colors.onSurface) },
+                        onClick = { menuOpen = false; renaming = true },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.common_delete), style = OpenCodeTypography.body, color = colors.danger) },
+                        onClick = { menuOpen = false; confirmingDelete = true },
+                    )
+                }
+            }
         }
     }
+
+    if (renaming) {
+        RenameDialog(
+            initial = row.title,
+            onConfirm = { title -> renaming = false; onRename(title) },
+            onDismiss = { renaming = false },
+        )
+    }
+    if (confirmingDelete) {
+        LocalizedAlertDialog(
+            onDismissRequest = { confirmingDelete = false },
+            title = { Text(stringResource(R.string.history_delete_title), style = OpenCodeTypography.title, color = colors.onSurface) },
+            text = { Text(stringResource(R.string.history_delete_body), style = OpenCodeTypography.body, color = colors.onSurfaceMuted) },
+            confirmButton = {
+                TextButton(onClick = { confirmingDelete = false; onDelete() }) {
+                    Text(stringResource(R.string.common_delete), color = colors.danger)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmingDelete = false }) {
+                    Text(stringResource(R.string.common_cancel), color = colors.onSurfaceMuted)
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun RenameDialog(initial: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
+    val colors = OpenCodeTheme.colors
+    val spacing = OpenCodeTheme.tokens.spacing
+    var text by remember { mutableStateOf(initial) }
+
+    LocalizedAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.history_rename_title), style = OpenCodeTypography.title, color = colors.onSurface) },
+        text = {
+            BasicTextField(
+                value = text,
+                onValueChange = { text = it },
+                singleLine = true,
+                textStyle = OpenCodeTypography.input.copy(color = colors.onSurface),
+                cursorBrush = SolidColor(colors.accent),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(OpenCodeTheme.tokens.radius.md))
+                    .background(colors.surfaceSunken)
+                    .border(0.5.dp, colors.outline, RoundedCornerShape(OpenCodeTheme.tokens.radius.md))
+                    .padding(horizontal = spacing.md, vertical = spacing.md),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(text) }, enabled = text.isNotBlank()) {
+                Text(stringResource(R.string.common_save), color = colors.accent)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.common_cancel), color = colors.onSurfaceMuted)
+            }
+        },
+    )
 }
 
 @Composable

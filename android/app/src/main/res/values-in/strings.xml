@@ -155,6 +155,11 @@
     <string name="history_all_projects">Semua proyek</string>
     <string name="history_loading">Memuat percakapan…</string>
     <string name="history_empty">Belum ada percakapan.\nKirim pesan untuk memulai.</string>
+    <string name="history_more">Aksi lainnya</string>
+    <string name="history_rename">Ubah nama</string>
+    <string name="history_rename_title">Ubah nama percakapan</string>
+    <string name="history_delete_title">Hapus percakapan ini?</string>
+    <string name="history_delete_body">Percakapan dan pesannya dihapus dari perangkat ini. Tindakan ini tidak bisa dibatalkan.</string>
 
     <!-- Providers -->
     <string name="providers_title">Penyedia</string>

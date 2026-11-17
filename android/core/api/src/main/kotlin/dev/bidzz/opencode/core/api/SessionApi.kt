@@ -12,6 +12,8 @@ import dev.bidzz.opencode.core.api.dto.SessionsResponse
 import dev.bidzz.opencode.core.api.dto.SetModelRequest
 import dev.bidzz.opencode.core.api.dto.SingleResponse
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 /**
  * Session endpoints.
@@ -125,6 +127,21 @@ class SessionApi(private val client: EngineClient) {
         val request = client.request("/api/session/$sessionID/permission/$requestID/reply")
             .post(client.jsonBody(body))
             .build()
+        return client.executeUnit(request)
+    }
+
+    /** Renames a session. Answers 204. */
+    suspend fun rename(sessionID: String, title: String): ApiResult<Unit> {
+        val body = buildJsonObject { put("title", title) }.toString()
+        val request = client.request("/api/session/$sessionID")
+            .patch(client.jsonBody(body))
+            .build()
+        return client.executeUnit(request)
+    }
+
+    /** Deletes a session and its child sessions. Answers 204. */
+    suspend fun delete(sessionID: String): ApiResult<Unit> {
+        val request = client.request("/api/session/$sessionID").delete().build()
         return client.executeUnit(request)
     }
 

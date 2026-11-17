@@ -242,6 +242,13 @@ fun OpenCodeApp(app: OpenCodeApplication) {
                     chatViewModel.newSession()
                     screen = Screen.Chat
                 },
+                onRename = sessionViewModel::rename,
+                // A chat that was showing the deleted session must not keep talking to it.
+                onDelete = { row ->
+                    sessionViewModel.delete(row) {
+                        if (chatState.sessionID == row.id) chatViewModel.newSession()
+                    }
+                },
             )
 
             Screen.Projects -> {
