@@ -1,8 +1,11 @@
 package dev.bidzz.opencode.core.design
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
@@ -17,10 +20,20 @@ import androidx.compose.ui.unit.sp
  * Sizes are small by default. A coding tool shows a lot of text; oversized headings
  * waste vertical space on a phone, and `plan.md` §12 explicitly forbids them.
  */
+// FontVariation (the weight axis of the variable font) is still experimental in this Compose version.
+@OptIn(ExperimentalTextApi::class)
 object OpenCodeTypography {
 
-    /** Prose and UI chrome. Platform default; no font asset to ship or license. */
-    val ui: FontFamily = FontFamily.SansSerif
+    /**
+     * Prose and UI chrome: Inter, one variable font file used at four weights.
+     * Licence and source: `THIRD_PARTY_NOTICES.md`.
+     */
+    val ui: FontFamily = FontFamily(
+        Font(R.font.inter, FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
+        Font(R.font.inter, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
+        Font(R.font.inter, FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
+        Font(R.font.inter, FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700))),
+    )
 
     /** Code, paths, and anything copyable. */
     val mono: FontFamily = FontFamily.Monospace

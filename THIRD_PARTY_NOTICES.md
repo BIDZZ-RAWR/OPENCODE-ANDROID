@@ -110,6 +110,24 @@ The full text is available at https://unlicense.org/.
 
 ---
 
+## Bundled font
+
+### Inter — SIL Open Font License 1.1
+
+| | |
+|---|---|
+| Component | Inter (variable font, `opsz` and `wght` axes) |
+| Copyright | 2020 The Inter Project Authors |
+| Licence | **OFL-1.1**, full text in `licenses/OFL-1.1-Inter.txt` |
+| Upstream | https://github.com/rsms/inter |
+| Source used | `ofl/inter/Inter[opsz,wght].ttf` from https://github.com/google/fonts |
+| Modifications | **None.** Used as downloaded, as `res/font/inter.ttf` in `core:design`. |
+
+The OFL permits bundling and redistribution with software, provided the licence text travels
+with it and the font is not sold on its own.
+
+---
+
 ## Not bundled
 
 Deliberately excluded, to keep the APK small and the licence surface narrow:
