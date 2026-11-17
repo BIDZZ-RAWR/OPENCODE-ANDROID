@@ -19,6 +19,8 @@ import dev.bidzz.opencode.OpenCodeApplication
 import dev.bidzz.opencode.core.design.OpenCodeTheme
 import dev.bidzz.opencode.core.engine.EngineState
 import dev.bidzz.opencode.ui.about.AboutScreen
+import dev.bidzz.opencode.ui.mcp.McpScreen
+import dev.bidzz.opencode.ui.mcp.McpViewModel
 import dev.bidzz.opencode.ui.chat.ChatScreen
 import dev.bidzz.opencode.ui.chat.ChatViewModel
 import dev.bidzz.opencode.ui.diagnostics.DiagnosticsScreen
@@ -58,6 +60,7 @@ internal sealed interface Screen {
     data object Providers : Screen
     data object Diagnostics : Screen
     data object About : Screen
+    data object Mcp : Screen
 }
 
 /**
@@ -70,7 +73,7 @@ internal sealed interface Screen {
 internal fun Screen.parent(): Screen = when (this) {
     is Screen.FileView, Screen.DiffList -> Screen.Files
     is Screen.Diff -> Screen.DiffList
-    Screen.Providers, Screen.About -> Screen.Settings
+    Screen.Providers, Screen.About, Screen.Mcp -> Screen.Settings
     else -> Screen.Chat
 }
 
@@ -101,6 +104,10 @@ fun OpenCodeApp(app: OpenCodeApplication) {
     val diffViewModel: DiffViewModel = viewModel(factory = viewModelFactory {
         DiffViewModel(app.engineApi, { app.workspaceStore.resolve().absolutePath })
     })
+    val mcpViewModel: McpViewModel = viewModel(factory = viewModelFactory {
+        McpViewModel(app.engineApi, { app.workspaceStore.resolve().absolutePath })
+    })
+    val mcpState by mcpViewModel.state.collectAsState()
     val providersViewModel: ProvidersViewModel = viewModel(factory = viewModelFactory {
         ProvidersViewModel(
             api = app.engineApi,
@@ -135,6 +142,10 @@ fun OpenCodeApp(app: OpenCodeApplication) {
     // Load history whenever the screen is shown, and reload when the scope flips.
     LaunchedEffect(screen, sessionScopeToProject) {
         if (screen is Screen.Sessions) sessionViewModel.load(sessionScopeToProject)
+    }
+
+    LaunchedEffect(screen, engineStatus.credentials?.baseUrl) {
+        if (screen is Screen.Mcp) mcpViewModel.load()
     }
 
     // Load the explorer when it first appears or the project changes.
@@ -265,6 +276,14 @@ fun OpenCodeApp(app: OpenCodeApplication) {
                 onProjects = { screen = Screen.Projects },
                 onProviders = { screen = Screen.Providers },
                 onAbout = { screen = Screen.About },
+                onMcp = { screen = Screen.Mcp },
+            )
+
+            Screen.Mcp -> McpScreen(
+                state = mcpState,
+                onBack = { screen = Screen.Settings },
+                onRefresh = mcpViewModel::load,
+                onToggle = mcpViewModel::toggle,
             )
 
             Screen.About -> AboutScreen(

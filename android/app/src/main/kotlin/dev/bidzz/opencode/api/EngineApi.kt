@@ -8,6 +8,7 @@ import dev.bidzz.opencode.core.api.CredentialApi
 import dev.bidzz.opencode.core.api.EngineClient
 import dev.bidzz.opencode.core.api.EventStream
 import dev.bidzz.opencode.core.api.IntegrationApi
+import dev.bidzz.opencode.core.api.McpApi
 import dev.bidzz.opencode.core.api.ModelApi
 import dev.bidzz.opencode.core.api.ProviderApi
 import dev.bidzz.opencode.core.api.SessionApi
@@ -33,6 +34,7 @@ class EngineApi(private val workspaceDirectory: () -> String) {
         val commands: CommandApi,
         val providers: ProviderApi,
         val integrations: IntegrationApi,
+        val mcp: McpApi,
         /** Named to avoid colliding with [credentials], which is the engine's own auth. */
         val credentialStore: CredentialApi,
         val stream: EventStream,
@@ -59,6 +61,7 @@ class EngineApi(private val workspaceDirectory: () -> String) {
             commands = CommandApi(client),
             providers = ProviderApi(client),
             integrations = IntegrationApi(client),
+            mcp = McpApi(client),
             credentialStore = CredentialApi(client),
             stream = EventStream(client),
             credentials = credentials,

@@ -254,4 +254,19 @@
     <string name="providers_config_write_failed">Berkas konfigurasi tidak bisa ditulis</string>
     <string name="providers_config_shadowed">Tersimpan, tetapi `opencode.jsonc` di sebelahnya lebih diutamakan. Engine akan membaca berkas itu, bukan yang ini.</string>
     <string name="providers_stale_key">Kunci baru untuk %1$s tersimpan, tetapi kunci lama masih ada.</string>
+    <!-- MCP servers -->
+    <string name="settings_section_tools">Alat</string>
+    <string name="settings_mcp_title">Server MCP</string>
+    <string name="settings_mcp_body">Lihat server yang tersambung, lalu sambungkan atau putuskan.</string>
+    <string name="mcp_title">Server MCP</string>
+    <string name="mcp_loading">Memuat server…</string>
+    <string name="mcp_empty">Belum ada server MCP yang diatur.\nTambahkan di bagian \"mcp\" pada konfigurasi mesin.</string>
+    <string name="mcp_note">Sambung dan putus berlaku sampai mesin dimulai ulang.</string>
+    <string name="mcp_connect">Sambungkan</string>
+    <string name="mcp_disconnect">Putuskan</string>
+    <string name="mcp_status_connected">Tersambung</string>
+    <string name="mcp_status_pending">Menyambung</string>
+    <string name="mcp_status_disabled">Mati</string>
+    <string name="mcp_status_failed">Gagal</string>
+    <string name="mcp_status_needs_auth">Perlu masuk</string>
 </resources>
