@@ -259,6 +259,11 @@
     <string name="providers_config_write_failed">Berkas konfigurasi tidak bisa ditulis</string>
     <string name="providers_config_shadowed">Tersimpan, tetapi `opencode.jsonc` di sebelahnya lebih diutamakan. Engine akan membaca berkas itu, bukan yang ini.</string>
     <string name="providers_stale_key">Kunci baru untuk %1$s tersimpan, tetapi kunci lama masih ada.</string>
+    <!-- Composer: voice -->
+    <string name="composer_voice">Dikte</string>
+    <string name="composer_voice_prompt">Ucapkan pesanmu</string>
+    <string name="composer_voice_unavailable">Tidak ada pengenal suara di perangkat ini.</string>
+
     <!-- MCP servers -->
     <string name="settings_section_tools">Alat</string>
     <string name="settings_mcp_title">Server MCP</string>
@@ -274,4 +279,9 @@
     <string name="mcp_status_disabled">Mati</string>
     <string name="mcp_status_failed">Gagal</string>
     <string name="mcp_status_needs_auth">Perlu masuk</string>
+
+    <!-- Reply actions -->
+    <string name="chat_copy">Salin balasan</string>
+    <string name="chat_share">Bagikan balasan</string>
+    <string name="chat_disclaimer">OpenCode bisa membuat kesalahan. Periksa perubahan yang penting.</string>
 </resources>

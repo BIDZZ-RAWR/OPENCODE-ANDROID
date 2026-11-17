@@ -1,6 +1,18 @@
 package dev.bidzz.opencode.ui.chat
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import dev.bidzz.opencode.ui.Glyph
+import dev.bidzz.opencode.ui.GlyphIcon
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +56,8 @@ fun MessageBubble(
     tools: List<dev.bidzz.opencode.core.api.dto.ToolCall> = emptyList(),
     /** Mode and model that produced this reply, when known. Empty when absent. */
     provenance: String? = null,
+    /** Copy and share under the reply, and the reminder to check it. Only the newest reply gets them. */
+    showActions: Boolean = false,
 ) {
     val colors = OpenCodeTheme.colors
     val spacing = OpenCodeTheme.tokens.spacing
@@ -74,11 +88,14 @@ fun MessageBubble(
         Role.ASSISTANT -> Column(modifier = modifier.fillMaxWidth()) {
             // Which mode and model answered, small and quiet: it is reference, not content.
             // Nothing at all when there is nothing to say, instead of a label on every reply.
-            if (!provenance.isNullOrBlank() || streaming) {
+            // With steps, the label sits under their card, the way a step is attributed to its model;
+            // without any, it stays above the text.
+            val topLabel = provenance?.takeIf { tools.isEmpty() }
+            if (!topLabel.isNullOrBlank() || streaming) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (!provenance.isNullOrBlank()) {
+                    if (!topLabel.isNullOrBlank()) {
                         Text(
-                            text = provenance,
+                            text = topLabel,
                             style = OpenCodeTypography.label,
                             color = colors.onSurfaceFaint,
                         )
@@ -86,13 +103,27 @@ fun MessageBubble(
                     if (streaming) {
                         CircularProgressIndicator(
                             modifier = Modifier
-                                .padding(start = if (provenance.isNullOrBlank()) 0.dp else spacing.sm)
+                                .padding(start = if (topLabel.isNullOrBlank()) 0.dp else spacing.sm)
                                 .size(dims.statusDotSize),
                             strokeWidth = 1.5.dp,
                             color = colors.accent,
                         )
                     }
                 }
+            }
+            // The steps come first, then what the agent concluded from them.
+            ToolTrace(
+                tools = tools,
+                streaming = streaming,
+                modifier = Modifier.padding(top = spacing.xs),
+            )
+            if (tools.isNotEmpty()) {
+                Text(
+                    text = provenance.orEmpty(),
+                    style = OpenCodeTypography.label,
+                    color = colors.onSurfaceFaint,
+                    modifier = Modifier.padding(top = spacing.xs, bottom = spacing.sm),
+                )
             }
             Box(Modifier.padding(top = spacing.xs)) {
                 if (markdown.isEmpty() && streaming) {
@@ -107,11 +138,7 @@ fun MessageBubble(
                     MarkdownText(markdown = markdown)
                 }
             }
-            ToolTrace(
-                tools = tools,
-                streaming = streaming,
-                modifier = Modifier.padding(top = spacing.xs),
-            )
+            if (showActions && markdown.isNotEmpty() && !streaming) ReplyActions(markdown)
         }
 
         Role.ERROR -> Row(modifier = modifier.fillMaxWidth()) {
@@ -138,6 +165,53 @@ fun MessageBubble(
                 }
             }
         }
+    }
+}
+
+/** Copy and share for a finished reply, and the one-line reminder under them. */
+@Composable
+private fun ReplyActions(markdown: String) {
+    val colors = OpenCodeTheme.colors
+    val spacing = OpenCodeTheme.tokens.spacing
+    val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
+    val copyLabel = stringResource(R.string.chat_copy)
+    val shareLabel = stringResource(R.string.chat_share)
+
+    Column(Modifier.padding(top = spacing.sm)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ReplyAction(Glyph.Copy, copyLabel) { clipboard.setText(AnnotatedString(markdown)) }
+            ReplyAction(Glyph.Share, shareLabel) {
+                val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, markdown)
+                // The app's language context is not an Activity, so the new task flag is required.
+                val chooser = Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                try {
+                    context.startActivity(chooser)
+                } catch (_: ActivityNotFoundException) {
+                    // Nothing on the device can take text; there is nothing useful to say about it.
+                }
+            }
+        }
+        Text(
+            text = stringResource(R.string.chat_disclaimer),
+            style = OpenCodeTypography.label,
+            color = colors.onSurfaceFaint,
+            modifier = Modifier.padding(top = spacing.sm),
+        )
+    }
+}
+
+@Composable
+private fun ReplyAction(glyph: Glyph, description: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .semantics { contentDescription = description }
+            .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        GlyphIcon(glyph, tint = OpenCodeTheme.colors.onSurfaceMuted, size = 20.dp)
     }
 }
 

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
@@ -53,10 +54,10 @@ fun ChatControls(
 
     val spacing = OpenCodeTheme.tokens.spacing
 
-    // Lives inside the composer, which supplies the padding.
+    // Plain text with a chevron, in the composer's second line.
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+        horizontalArrangement = Arrangement.spacedBy(spacing.xs),
     ) {
         if (agents.isNotEmpty()) {
             ChoiceChip(
@@ -96,21 +97,20 @@ private fun ChoiceChip(
     Box {
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(radius.full))
-                // Outline only: the chip sits on the composer's own surface.
-                .border(0.5.dp, colors.outline, RoundedCornerShape(radius.full))
+                .clip(RoundedCornerShape(radius.md))
                 .clickable { expanded = true }
-                .padding(start = spacing.md, end = spacing.sm, top = spacing.xs, bottom = spacing.xs),
+                .heightIn(min = 40.dp)
+                .padding(horizontal = spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(spacing.xs),
         ) {
             Text(
                 text = if (chosen) label else placeholder,
-                style = OpenCodeTypography.label,
+                style = OpenCodeTypography.bodySmall,
                 color = if (chosen) colors.onSurface else colors.onSurfaceFaint,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = 140.dp),
+                modifier = Modifier.widthIn(max = 130.dp),
             )
             GlyphIcon(Glyph.ChevronDown, tint = colors.onSurfaceFaint, size = 14.dp)
         }

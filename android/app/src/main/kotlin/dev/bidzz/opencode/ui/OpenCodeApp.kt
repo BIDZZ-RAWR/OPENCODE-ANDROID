@@ -170,10 +170,16 @@ fun OpenCodeApp(app: OpenCodeApplication) {
     var language by remember { mutableStateOf(LanguageStore.get(hostContext)) }
     val localized = remember(language) { LanguageStore.wrap(hostContext, language) }
 
+    // The language context is not an Activity, and the activity-result launcher (dictation) looks
+    // its registry up through LocalContext. Hand it the real activity, or it throws on first use.
+    val registryOwner = hostContext as? androidx.activity.result.ActivityResultRegistryOwner
     CompositionLocalProvider(
         LocalContext provides localized,
         LocalConfiguration provides localized.resources.configuration,
         LocalAppContext provides localized,
+        *listOfNotNull(
+            registryOwner?.let { androidx.activity.compose.LocalActivityResultRegistryOwner provides it },
+        ).toTypedArray(),
     ) {
     OpenCodeTheme {
         when (screen) {

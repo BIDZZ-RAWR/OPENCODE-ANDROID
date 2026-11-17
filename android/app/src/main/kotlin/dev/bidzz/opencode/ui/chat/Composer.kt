@@ -1,5 +1,12 @@
 package dev.bidzz.opencode.ui.chat
 
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.speech.RecognizerIntent
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
@@ -19,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -33,9 +40,9 @@ import dev.bidzz.opencode.ui.GlyphIcon
 /**
  * Message input.
  *
- * One rounded container: the text on top, and underneath it a row with the session
- * controls on the left and send on the right. Mode and model are decided right before
- * typing, so they sit with the input instead of floating as a separate strip above it.
+ * One bordered box in two lines. On top, the text. Underneath, mode and model as plain text on
+ * the left (see `ChatControls`), and dictation and send at the right end. Mode and model are
+ * decided right before typing, so they sit with the input.
  *
  * The field grows with its content up to a cap, then scrolls, so a long prompt does not
  * push the conversation off screen. Send becomes stop while the agent is working, in the
@@ -57,14 +64,14 @@ fun Composer(
     val dims = OpenCodeTheme.tokens.dimensions
 
     val canSend = enabled && value.isNotBlank() && !busy
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(20.dp)
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = spacing.md, vertical = spacing.sm)
-            .background(colors.surface, shape)
-            .border(0.5.dp, colors.outline, shape)
+            .background(colors.surfaceRaised, shape)
+            .border(1.dp, colors.outline, shape)
             .padding(start = spacing.lg, end = spacing.sm, top = spacing.md, bottom = spacing.sm),
     ) {
         // `decorationBox` rather than a sibling Text: the field itself must own the
@@ -78,7 +85,8 @@ fun Composer(
             enabled = enabled,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = dims.composerMaxHeight),
+                .heightIn(max = dims.composerMaxHeight)
+                .padding(end = spacing.sm, bottom = spacing.xs),
             decorationBox = { inner ->
                 Box {
                     if (value.isEmpty()) {
@@ -108,6 +116,11 @@ fun Composer(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(Modifier.weight(1f)) { controls() }
+
+            // Dictation is offered only while there is nothing typed to send.
+            if (enabled && !busy && value.isEmpty()) {
+                DictationButton(onText = { spoken -> onValueChange((value + " " + spoken).trim()) })
+            }
             ActionButton(
                 busy = busy,
                 canSend = canSend,
@@ -117,34 +130,85 @@ fun Composer(
     }
 }
 
+/** A rounded-square button in the composer's second line. */
+@Composable
+private fun SquareButton(
+    description: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    fill: androidx.compose.ui.graphics.Color = OpenCodeTheme.colors.surfaceVariant,
+    content: @Composable () -> Unit,
+) {
+    Box(
+        modifier = modifier
+            .padding(start = OpenCodeTheme.tokens.spacing.sm)
+            .size(width = 46.dp, height = 40.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(fill)
+            .semantics { contentDescription = description }
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+        content = { content() },
+    )
+}
+
+@Composable
+private fun DictationButton(onText: (String) -> Unit) {
+    val colors = OpenCodeTheme.colors
+    val context = LocalContext.current
+    val voicePrompt = stringResource(R.string.composer_voice_prompt)
+    val voiceUnavailable = stringResource(R.string.composer_voice_unavailable)
+    val voiceLabel = stringResource(R.string.composer_voice)
+    val dictation = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val spoken = result.data
+            ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            ?.firstOrNull()
+        if (result.resultCode == Activity.RESULT_OK && !spoken.isNullOrBlank()) onText(spoken)
+    }
+
+    SquareButton(
+        description = voiceLabel,
+        onClick = {
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                .putExtra(RecognizerIntent.EXTRA_PROMPT, voicePrompt)
+            // No resolveActivity check: package visibility would hide a recognizer that exists.
+            try {
+                dictation.launch(intent)
+            } catch (_: ActivityNotFoundException) {
+                Toast.makeText(context, voiceUnavailable, Toast.LENGTH_SHORT).show()
+            }
+        },
+    ) {
+        GlyphIcon(Glyph.Mic, tint = colors.onSurfaceMuted, size = 22.dp)
+    }
+}
+
 @Composable
 private fun ActionButton(busy: Boolean, canSend: Boolean, onClick: () -> Unit) {
     val colors = OpenCodeTheme.colors
     val active = busy || canSend
-    val label = stringResource(if (busy) R.string.composer_stop else R.string.composer_send)
 
-    Box(
-        modifier = Modifier
-            .size(36.dp)
-            .clip(CircleShape)
-            // The strongest neutral of the theme: near-black on light, near-white on dark.
-            .background(if (active) colors.onSurface else colors.surfaceSunken)
-            .semantics { contentDescription = label }
-            .clickable(enabled = active, role = Role.Button, onClick = onClick),
-        contentAlignment = Alignment.Center,
+    SquareButton(
+        description = stringResource(if (busy) R.string.composer_stop else R.string.composer_send),
+        onClick = onClick,
+        enabled = active,
+        // Sending is the one primary action on this screen, so it carries the brand accent.
+        fill = if (active) colors.accent else colors.surfaceVariant,
     ) {
         if (busy) {
             // A filled square reads as "stop" without needing an icon.
             Box(
                 Modifier
-                    .size(11.dp)
-                    .background(colors.background, RoundedCornerShape(2.dp)),
+                    .size(12.dp)
+                    .background(colors.onAccent, RoundedCornerShape(2.dp)),
             )
         } else {
             GlyphIcon(
                 glyph = Glyph.ArrowUp,
-                tint = if (canSend) colors.background else colors.onSurfaceFaint,
-                size = 20.dp,
+                tint = if (canSend) colors.onAccent else colors.onSurfaceFaint,
+                size = 22.dp,
             )
         }
     }

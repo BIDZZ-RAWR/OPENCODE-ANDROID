@@ -3,6 +3,11 @@ package dev.bidzz.opencode.ui.chat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +15,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -37,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import dev.bidzz.opencode.R
@@ -145,7 +152,6 @@ fun ChatScreen(
                 if (state.messages.isEmpty()) {
                     EmptyChat(
                         engineReady = state.workspaceReady,
-                        onSuggestion = onDraftChange,
                         modifier = Modifier.align(Alignment.Center),
                     )
                 } else {
@@ -174,6 +180,7 @@ fun ChatScreen(
                                     state.agents,
                                     state.models,
                                 ),
+                                showActions = !state.busy && message.id == state.messages.lastOrNull()?.id,
                             )
                         }
                         // Until the first reply token arrives, the only sign of life is this line
@@ -225,6 +232,11 @@ fun ChatScreen(
                 onPick = { name -> onDraftChange("/$name ") },
             )
 
+            // Only on a blank page with nothing typed: once there is a draft or a chat, they are noise.
+            if (state.messages.isEmpty() && state.workspaceReady && state.draft.isEmpty()) {
+                SuggestionStrip(onSuggestion = onDraftChange)
+            }
+
             Composer(
                 value = state.draft,
                 onValueChange = onDraftChange,
@@ -268,58 +280,76 @@ private fun ChatHeader(
     val dims = OpenCodeTheme.tokens.dimensions
     val status = engineState.toStatus(busy)
 
-    Box(
+    // Two bare icons, and the conversation's name small and centred beneath them. The dot
+    // carries the engine's state; tapping the name opens diagnostics.
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = spacing.sm, vertical = spacing.xs),
     ) {
-        IconAction(
-            glyph = Glyph.Menu,
-            description = stringResource(R.string.chat_menu),
-            onClick = onMenu,
-            modifier = Modifier.align(Alignment.CenterStart),
-        )
-
-        Column(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(horizontal = dims.minTouchTarget + spacing.xs),
-            horizontalAlignment = Alignment.CenterHorizontally,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            IconAction(Glyph.Menu, stringResource(R.string.chat_menu), onMenu)
+            IconAction(Glyph.NewChat, stringResource(R.string.chat_new_session), onNewSession)
+        }
+        Row(
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .clip(RoundedCornerShape(OpenCodeTheme.tokens.radius.md))
+                .clickable(onClick = onStatusClick)
+                .padding(horizontal = spacing.md, vertical = spacing.xs),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier
+                    .size(dims.statusDotSize)
+                    .background(colors.statusColor(status), CircleShape),
+            )
             Text(
                 text = title,
-                style = OpenCodeTypography.title,
-                color = colors.onSurface,
+                style = OpenCodeTypography.bodySmall,
+                color = colors.onSurfaceMuted,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-            )
-            Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(OpenCodeTheme.tokens.radius.full))
-                    .clickable(onClick = onStatusClick)
-                    .padding(horizontal = spacing.sm, vertical = spacing.xxs),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    Modifier
-                        .size(dims.statusDotSize)
-                        .background(colors.statusColor(status), CircleShape),
-                )
-                Text(
-                    text = engineState.statusLabel(busy),
-                    style = OpenCodeTypography.label,
-                    color = colors.statusColor(status),
-                    modifier = Modifier.padding(start = spacing.xs),
-                )
-            }
+                    .padding(start = spacing.sm)
+                    .widthIn(max = 240.dp),
+            )
+            GlyphIcon(
+                Glyph.ChevronDown,
+                tint = colors.onSurfaceFaint,
+                size = 16.dp,
+                modifier = Modifier.padding(start = spacing.xs),
+            )
         }
+    }
+}
 
-        IconAction(
-            glyph = Glyph.NewChat,
-            description = stringResource(R.string.chat_new_session),
-            onClick = onNewSession,
-            modifier = Modifier.align(Alignment.CenterEnd),
-        )
+/** A round, hairline-edged button: the header's and the drawer's way of saying "tap". */
+@Composable
+private fun RoundButton(
+    glyph: Glyph,
+    description: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 44.dp,
+) {
+    val colors = OpenCodeTheme.colors
+
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(colors.surfaceRaised)
+            .border(0.5.dp, colors.outline, CircleShape)
+            .semantics { contentDescription = description }
+            .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        GlyphIcon(glyph, tint = colors.onSurface, size = 20.dp)
     }
 }
 
@@ -365,7 +395,6 @@ private fun ChatDrawer(
                 modifier = Modifier.padding(horizontal = spacing.xl, vertical = spacing.xs),
             )
 
-            DrawerItem(stringResource(R.string.chat_new_session), Glyph.NewChat, onNewSession, accent = true)
             DrawerItem(stringResource(R.string.drawer_files), Glyph.File, onFiles)
             DrawerItem(stringResource(R.string.drawer_project), Glyph.Folder, onProject)
             DrawerItem(stringResource(R.string.settings_title), Glyph.Sliders, onSettings)
@@ -423,15 +452,48 @@ private fun ChatDrawer(
             }
         }
 
-        DrawerItem(stringResource(R.string.drawer_all_sessions), Glyph.Search, onAllSessions)
+        // Pinned at the bottom, within thumb reach: all sessions, and a new one.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = spacing.lg, vertical = spacing.md),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+        ) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp)
+                    .clip(CircleShape)
+                    .background(colors.surfaceRaised)
+                    .border(0.5.dp, colors.outline, CircleShape)
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onAllSessions)
+                    .padding(horizontal = spacing.lg),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                GlyphIcon(Glyph.Search, tint = colors.onSurfaceMuted, size = 20.dp)
+                Text(
+                    text = stringResource(R.string.drawer_all_sessions),
+                    style = OpenCodeTypography.body,
+                    color = colors.onSurfaceMuted,
+                    modifier = Modifier.padding(start = spacing.md),
+                )
+            }
+            RoundButton(
+                glyph = Glyph.NewChat,
+                description = stringResource(R.string.chat_new_session),
+                onClick = onNewSession,
+                size = 48.dp,
+            )
+        }
     }
 }
 
 @Composable
-private fun DrawerItem(label: String, glyph: Glyph, onClick: () -> Unit, accent: Boolean = false) {
+private fun DrawerItem(label: String, glyph: Glyph, onClick: () -> Unit) {
     val colors = OpenCodeTheme.colors
     val spacing = OpenCodeTheme.tokens.spacing
-    val tint = if (accent) colors.accent else colors.onSurface
+    val tint = colors.onSurface
 
     Row(
         modifier = Modifier
@@ -473,59 +535,95 @@ private fun JumpToLatest(onClick: () -> Unit, modifier: Modifier = Modifier) {
 }
 
 /**
- * Shown before the first message: says what to do, and offers starting points.
+ * Shown before the first message: the brand lockup, and nothing else to read.
  *
- * Tapping a suggestion fills the composer rather than sending, so the user can change it
- * first. While the engine starts there is nothing to suggest yet.
+ * The starting points are a strip of pills just above the composer (see [SuggestionStrip]), so
+ * the middle of the screen stays quiet. While the engine starts, it says so.
  */
 @Composable
-private fun EmptyChat(engineReady: Boolean, onSuggestion: (String) -> Unit, modifier: Modifier = Modifier) {
+private fun EmptyChat(engineReady: Boolean, modifier: Modifier = Modifier) {
     val colors = OpenCodeTheme.colors
     val spacing = OpenCodeTheme.tokens.spacing
-    val radius = OpenCodeTheme.tokens.radius
     val dims = OpenCodeTheme.tokens.dimensions
 
     Column(
+        // Full width, so the children centre on the screen rather than on their own widest line.
         modifier = modifier
+            .fillMaxWidth()
             .widthIn(max = dims.contentMaxWidth)
             .padding(horizontal = spacing.xl),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        Image(
+            painter = painterResource(R.drawable.brand_mark),
+            contentDescription = null,
+            modifier = Modifier
+                .size(84.dp)
+                .clip(RoundedCornerShape(21.dp)),
+        )
+        // The wordmark from the logo sheet: the name large, "ANDROID" small and spaced, in lime.
+        Text(
+            text = "OpenCode",
+            style = OpenCodeTypography.title.copy(fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.Bold),
+            color = colors.onSurface,
+            modifier = Modifier.padding(top = spacing.xl),
+        )
+        Text(
+            text = "ANDROID",
+            style = OpenCodeTypography.label.copy(fontSize = 13.sp, letterSpacing = 6.sp),
+            color = colors.accent,
+            modifier = Modifier.padding(top = spacing.xs),
+        )
         Text(
             text = stringResource(if (engineReady) R.string.empty_title_ready else R.string.empty_title_starting),
-            style = OpenCodeTypography.title,
-            color = colors.onSurface,
+            style = OpenCodeTypography.bodySmall,
+            color = colors.onSurfaceMuted,
             textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = spacing.xl),
         )
         if (!engineReady) {
             Text(
                 text = stringResource(R.string.empty_starting_body),
-                style = OpenCodeTypography.body,
-                color = colors.onSurfaceMuted,
+                style = OpenCodeTypography.bodySmall,
+                color = colors.onSurfaceFaint,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = spacing.sm),
+                modifier = Modifier.padding(top = spacing.xs),
             )
-        } else {
-            Column(
-                modifier = Modifier.padding(top = spacing.xl),
-                verticalArrangement = Arrangement.spacedBy(spacing.sm),
-            ) {
-                SUGGESTIONS.forEach { suggestionRes ->
-                    val suggestion = stringResource(suggestionRes)
-                    Text(
-                        text = suggestion,
-                        style = OpenCodeTypography.body,
-                        color = colors.onSurface,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(radius.lg))
-                            .background(colors.surface)
-                            .border(0.5.dp, colors.outline, RoundedCornerShape(radius.lg))
-                            .clickable { onSuggestion(suggestion) }
-                            .padding(horizontal = spacing.lg, vertical = spacing.md),
-                    )
-                }
-            }
+        }
+    }
+}
+
+/**
+ * Starting points as a row of pills that scrolls sideways, above the composer.
+ *
+ * Tapping one fills the composer rather than sending, so the user can change it first.
+ */
+@Composable
+private fun SuggestionStrip(onSuggestion: (String) -> Unit) {
+    val colors = OpenCodeTheme.colors
+    val spacing = OpenCodeTheme.tokens.spacing
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = spacing.md, vertical = spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+    ) {
+        SUGGESTIONS.forEach { suggestionRes ->
+            val suggestion = stringResource(suggestionRes)
+            Text(
+                text = suggestion,
+                style = OpenCodeTypography.bodySmall,
+                color = colors.onSurface,
+                maxLines = 1,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(colors.surfaceRaised)
+                    .border(0.5.dp, colors.outline, CircleShape)
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { onSuggestion(suggestion) }
+                    .padding(horizontal = spacing.lg, vertical = spacing.md),
+            )
         }
     }
 }

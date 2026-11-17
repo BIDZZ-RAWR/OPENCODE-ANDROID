@@ -1,18 +1,13 @@
 package dev.bidzz.opencode.ui.chat
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,24 +18,28 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.bidzz.opencode.R
 import dev.bidzz.opencode.core.api.dto.ToolCall
 import dev.bidzz.opencode.core.design.OpenCodeTheme
 import dev.bidzz.opencode.core.design.OpenCodeTypography
+import dev.bidzz.opencode.ui.CardGroup
+import dev.bidzz.opencode.ui.Glyph
 import dev.bidzz.opencode.ui.GlyphIcon
+import dev.bidzz.opencode.ui.RowDivider
 
 /**
- * The whole tool trace for one message, collapsed to a single summary line.
+ * The whole tool trace for one message: one card, a row per step.
  *
  * A real coding run calls fifteen to thirty tools. Rendering every one as a
- * permanent row buried the answer under a wall of log, so the trace is folded and
- * the operator opens it on demand. Two things stay visible while it is folded:
+ * permanent row buried the answer under a wall of log, so the card is folded to
+ * its summary row and opened on demand. Two things stay visible while it is folded:
  * the step currently running, so progress is still legible, and any failure, so a
- * red dot is never hidden behind a tap.
+ * red mark is never hidden behind a tap.
  *
- * It starts open while the message streams and closes itself when the run ends —
+ * It starts open while the message streams and closes itself when the run ends:
  * watch it work, then read what it produced.
  */
 @Composable
@@ -60,34 +59,33 @@ fun ToolTrace(
 
     LaunchedEffect(streaming) { if (!streaming) open = false }
 
-    Column(modifier.fillMaxWidth()) {
+    CardGroup(modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { open = !open }
-                .padding(vertical = spacing.xs),
+                .heightIn(min = 48.dp)
+                .clickable(role = Role.Button) { open = !open }
+                .padding(horizontal = spacing.md, vertical = spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = if (open) "▾" else "▸",
-                style = OpenCodeTypography.label,
-                color = colors.onSurfaceFaint,
-            )
+            GlyphIcon(Glyph.Terminal, tint = colors.onSurfaceMuted, size = 18.dp)
             Text(
                 text = stringResource(
                     if (tools.size == 1) R.string.tool_steps_one else R.string.tool_steps_other,
                     tools.size,
                 ),
-                style = OpenCodeTypography.label,
+                style = OpenCodeTypography.bodySmall,
                 color = colors.onSurfaceMuted,
-                modifier = Modifier.padding(start = spacing.sm),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = spacing.md),
             )
             if (failed > 0) {
                 Text(
                     text = stringResource(R.string.tool_failed, failed),
                     style = OpenCodeTypography.label,
                     color = colors.danger,
-                    modifier = Modifier.padding(start = spacing.sm),
+                    modifier = Modifier.padding(end = spacing.sm),
                 )
             }
             if (running.isNotEmpty()) {
@@ -95,90 +93,69 @@ fun ToolTrace(
                     text = stringResource(R.string.tool_working),
                     style = OpenCodeTypography.label,
                     color = colors.warning,
-                    modifier = Modifier.padding(start = spacing.sm),
+                    modifier = Modifier.padding(end = spacing.sm),
                 )
             }
+            GlyphIcon(
+                if (open) Glyph.ChevronDown else Glyph.ChevronRight,
+                tint = colors.onSurfaceFaint,
+                size = 18.dp,
+            )
         }
 
-        // A vertical timeline: a dot per step on a rail, joined by a line to the next.
         val visible = if (open) tools else running + tools.filter { it.status == "error" }
-        visible.forEachIndexed { index, call ->
-            ToolStep(call, isLast = index == visible.lastIndex)
+        visible.forEach { call ->
+            RowDivider()
+            ToolStep(call)
         }
     }
 }
 
 /**
- * One step on the timeline: status dot on the rail, name and input gist beside it.
- * The step currently running reads in the accent colour; tap toggles input and output.
+ * One step: its icon, what it did, and how it ended (a check, a cross, or a spinner while it
+ * runs). Tap toggles the input and output.
  */
 @Composable
-fun ToolStep(call: ToolCall, isLast: Boolean, modifier: Modifier = Modifier) {
+fun ToolStep(call: ToolCall, modifier: Modifier = Modifier) {
     val colors = OpenCodeTheme.colors
     val spacing = OpenCodeTheme.tokens.spacing
     var open by rememberSaveable(call.id) { mutableStateOf(false) }
 
     val active = call.status == "running" || call.status == "streaming"
-    val dot = when {
-        call.status == "completed" -> colors.success
-        call.status == "error" -> colors.danger
-        else -> colors.accent
-    }
+    val label = stepLabel(call.name, call.summary, call.status)
 
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min)
-            .clickable { open = !open },
+            .clickable(role = Role.Button) { open = !open }
+            .padding(horizontal = spacing.md, vertical = spacing.md),
     ) {
-        Column(
-            modifier = Modifier.width(20.dp).fillMaxHeight(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Box(
-                Modifier
-                    .padding(top = spacing.sm)
-                    .size(if (active) 10.dp else 8.dp)
-                    .background(dot, CircleShape),
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            GlyphIcon(label.glyph, tint = if (active) colors.accent else colors.onSurfaceMuted, size = 18.dp)
+            Text(
+                text = label.text(),
+                style = OpenCodeTypography.bodySmall,
+                color = if (active) colors.accent else colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = spacing.md, end = spacing.sm),
             )
-            if (!isLast) {
-                Box(
-                    Modifier
-                        .padding(top = spacing.xs)
-                        .width(1.5.dp)
-                        .weight(1f)
-                        // `outline` is a hairline colour and vanishes at this width; the faint
-                        // text colour keeps the rail readable in both themes.
-                        .background(colors.onSurfaceFaint.copy(alpha = 0.45f)),
+            when {
+                call.status == "completed" -> GlyphIcon(Glyph.Check, tint = colors.success, size = 18.dp)
+                call.status == "error" -> GlyphIcon(Glyph.Close, tint = colors.danger, size = 18.dp)
+                else -> CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 1.5.dp,
+                    color = colors.accent,
                 )
             }
         }
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = spacing.sm, bottom = spacing.sm),
-        ) {
-            val label = stepLabel(call.name, call.summary, call.status)
-            Row(
-                modifier = Modifier.padding(top = spacing.xs),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                GlyphIcon(label.glyph, tint = if (active) colors.accent else colors.onSurfaceMuted, size = 14.dp)
-                Text(
-                    text = label.text(),
-                    style = OpenCodeTypography.bodySmall,
-                    color = if (active) colors.accent else colors.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = spacing.sm),
-                )
-            }
-            if (open) {
-                call.inputText?.let { Detail(stringResource(R.string.tool_input).uppercase(), it) }
-                call.output?.let { Detail(stringResource(R.string.tool_output).uppercase(), it.take(MAX_OUTPUT)) }
-                call.error?.let { Detail(stringResource(R.string.tool_error).uppercase(), it, colors.danger) }
-            }
+        if (open) {
+            call.inputText?.let { Detail(stringResource(R.string.tool_input).uppercase(), it) }
+            call.output?.let { Detail(stringResource(R.string.tool_output).uppercase(), it.take(MAX_OUTPUT)) }
+            call.error?.let { Detail(stringResource(R.string.tool_error).uppercase(), it, colors.danger) }
         }
     }
 }
